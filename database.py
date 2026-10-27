@@ -347,3 +347,4 @@ def get_zones():
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
+

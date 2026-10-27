@@ -14,651 +14,574 @@ from database import (
 )
 
 # ---------------------------------------------------------
-# Page Configuration & Styling
+# Page Configuration & Modern Theme Styling
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Warehouse Management System (WMS)",
+    page_title="NexusWMS - Smart Warehouse Management",
     page_icon="📦",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Initialize and seed database if not already done
+# Initialize database
 init_db()
 seed_database()
 
-# Custom Styling CSS
+# Theme-Adaptive, High-Contrast Modern CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .main-header {
+    
+    /* High-contrast gradient header */
+    .hero-title {
         font-size: 2.2rem;
         font-weight: 800;
-        color: #0F172A;
-        margin-bottom: 0.2rem;
+        background: linear-gradient(135deg, #2563EB 0%, #7C3AED 50%, #DB2777 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.1rem;
+        letter-spacing: -0.02em;
     }
-    .sub-header {
-        font-size: 1rem;
-        color: #475569;
-        margin-bottom: 1.5rem;
-    }
-    .wms-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .badge-inbound { background-color: #DBEAFE; color: #1E40AF; }
-    .badge-outbound { background-color: #FEF3C7; color: #92400E; }
-    .badge-critical { background-color: #FEE2E2; color: #991B1B; }
-    .badge-safe { background-color: #DCFCE7; color: #166534; }
     
-    .card-box {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    .hero-caption {
+        font-size: 0.95rem;
+        opacity: 0.85;
+        margin-bottom: 1.2rem;
     }
-    .receipt-box {
-        background: #F0FDF4;
-        border: 2px dashed #16A34A;
-        border-radius: 10px;
+    
+    /* Theme-Adaptive Translucent Cards */
+    .glass-card {
+        background: rgba(125, 125, 125, 0.08);
+        border: 1px solid rgba(125, 125, 125, 0.22);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .glass-card:hover {
+        border-color: #3B82F6;
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.12);
+    }
+
+    /* Status Badges */
+    .status-pill {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .pill-safe {
+        background: rgba(16, 185, 129, 0.18);
+        color: #10B981;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .pill-danger {
+        background: rgba(239, 68, 68, 0.18);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .pill-info {
+        background: rgba(59, 130, 246, 0.18);
+        color: #3B82F6;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+    .pill-warning {
+        background: rgba(245, 158, 11, 0.18);
+        color: #F59E0B;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    /* High-contrast receipt boxes */
+    .receipt-container {
+        background: rgba(16, 185, 129, 0.08);
+        border: 2px dashed #10B981;
+        border-radius: 12px;
         padding: 18px;
-        margin-top: 15px;
+        margin-top: 14px;
         font-family: 'Courier New', monospace;
     }
-    .dispatch-box {
-        background: #FFFBEB;
-        border: 2px dashed #D97706;
-        border-radius: 10px;
+    .dispatch-container {
+        background: rgba(245, 158, 11, 0.08);
+        border: 2px dashed #F59E0B;
+        border-radius: 12px;
         padding: 18px;
-        margin-top: 15px;
+        margin-top: 14px;
         font-family: 'Courier New', monospace;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Load Live Data from SQLite
+# Live Database Sync & Metrics Calculation
 # ---------------------------------------------------------
 inventory_list = get_all_inventory()
 inv_df = pd.DataFrame(inventory_list) if inventory_list else pd.DataFrame()
 
-# Compute live KPIs
 total_skus = len(inv_df)
 total_units = int(inv_df['stock_level'].sum()) if not inv_df.empty else 0
 total_val = float((inv_df['stock_level'] * inv_df['unit_price']).sum()) if not inv_df.empty else 0.0
 critical_df = inv_df[inv_df['stock_level'] <= inv_df['reorder_point']] if not inv_df.empty else pd.DataFrame()
 critical_count = len(critical_df)
 
-# ---------------------------------------------------------
-# Sidebar Navigation
-# ---------------------------------------------------------
-st.sidebar.markdown("## 📦 Warehouse WMS")
-st.sidebar.caption("Enterprise Database Inventory Platform")
-st.sidebar.markdown("---")
+# Top Bar Header
+col_header, col_refresh = st.columns([4, 1])
+with col_header:
+    st.markdown('<div class="hero-title">📦 NexusWMS Enterprise Operations</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-caption">High-Performance Real-Time Warehouse Management System • SQLite Connected</div>', unsafe_allow_html=True)
+with col_refresh:
+    st.write("")
+    if st.button("🔄 Sync Database", use_container_width=True, type="secondary"):
+        st.toast("⚡ Database refreshed successfully!", icon="✅")
+        st.rerun()
 
-page = st.sidebar.radio(
-    "Operations Navigation",
+# ---------------------------------------------------------
+# Interactive Live KPI Metric Bar (4 High-Contrast Cards)
+# ---------------------------------------------------------
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+with kpi1:
+    st.metric("Total Warehouse Valuation", f"${total_val:,.2f}", delta=f"{total_units:,} units in stock")
+with kpi2:
+    st.metric("Active Catalog SKUs", f"{total_skus:,}", delta="100% Tracked")
+with kpi3:
+    st.metric(
+        "Critical Restock Items", 
+        f"{critical_count:,}", 
+        delta=f"{(critical_count/max(1, total_skus)*100):.1f}% needs attention",
+        delta_color="inverse"
+    )
+with kpi4:
+    intakes_count = len(get_intake_records())
+    dispatches_count = len(get_dispatch_records())
+    st.metric("Total Logged Transactions", f"{intakes_count + dispatches_count:,}", delta=f"+{intakes_count} IN / +{dispatches_count} OUT")
+
+st.markdown("---")
+
+# ---------------------------------------------------------
+# Streamlined 3 Core Sections Navigation
+# ---------------------------------------------------------
+main_tab = st.radio(
+    "Select System View",
     [
-        "📥 Stock Intake & Inbound Receiving",
-        "📤 Stock Dispatch & Fulfillment",
-        "📋 Live Inventory & Master Catalog",
-        "⚠️ Automated Reorder Alerts",
-        "📊 Warehouse Executive Dashboard",
-        "🏢 Storage Zones & Facility Layout",
-        "📜 Transaction Audit Ledgers"
-    ]
+        "📦 Live Inventory & Stock Controller",
+        "🔄 Inbound Intake & Outbound Shipping Dock",
+        "📊 Warehouse Intelligence & Audit History"
+    ],
+    horizontal=True,
+    label_visibility="collapsed"
 )
 
-st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Database:** `SQLite (warehouse.db)`")
-st.sidebar.markdown(f"**Active SKUs:** `{total_skus:,}`")
-st.sidebar.markdown(f"**Total Physical Units:** `{total_units:,}`")
-st.sidebar.markdown(f"**Inventory Valuation:** `${total_val:,.2f}`")
-st.sidebar.markdown(f"**Items Below Reorder:** `{critical_count:,}`")
-
-st.sidebar.markdown("---")
-if st.sidebar.button("🔄 Refresh Data from Database", use_container_width=True):
-    st.rerun()
-
 # =========================================================
-# Page 1: 📥 Stock Intake & Inbound Receiving
+# SECTION 1: 📦 Live Inventory & Stock Controller
 # =========================================================
-if page == "📥 Stock Intake & Inbound Receiving":
-    st.markdown('<span class="wms-badge badge-inbound">Dock Management • Inbound Receiving</span>', unsafe_allow_html=True)
-    st.markdown("<div class='main-header'>📥 Inbound Stock Intake & Receiving Dock</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Receive incoming supplier shipments, log physical inspections, allocate storage rack bins, and update database inventory in real time.</div>", unsafe_allow_html=True)
+if main_tab == "📦 Live Inventory & Stock Controller":
+    st.markdown("### 📋 Real-Time Warehouse Inventory Master")
+    
+    # Interactive Search & Filter Controls
+    f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.2, 1.2, 1.1])
+    with f_col1:
+        search_txt = st.text_input("🔍 Quick Search", placeholder="Search by SKU, Product Name, or Bin...", label_visibility="collapsed")
+    with f_col2:
+        cat_options = sorted(inv_df['category'].unique()) if not inv_df.empty else []
+        sel_cat = st.multiselect("Filter Category", cat_options, default=[], placeholder="All Categories")
+    with f_col3:
+        zone_options = sorted(inv_df['zone'].unique()) if not inv_df.empty else []
+        sel_zone = st.multiselect("Filter Zone", zone_options, default=[], placeholder="All Storage Zones")
+    with f_col4:
+        health_filter = st.selectbox("Stock Status", ["All Items", "🔴 Critical (Below Reorder)", "🟢 Healthy Stock"])
 
-    intake_records = get_intake_records()
-    total_received_units = sum(r['quantity'] for r in intake_records) if intake_records else 0
+    # Filter logic
+    filtered = inv_df.copy()
+    if sel_cat:
+        filtered = filtered[filtered['category'].isin(sel_cat)]
+    if sel_zone:
+        filtered = filtered[filtered['zone'].isin(sel_zone)]
+    if health_filter == "🔴 Critical (Below Reorder)":
+        filtered = filtered[filtered['stock_level'] <= filtered['reorder_point']]
+    elif health_filter == "🟢 Healthy Stock":
+        filtered = filtered[filtered['stock_level'] > filtered['reorder_point']]
+    if search_txt:
+        filtered = filtered[
+            filtered['item_id'].str.contains(search_txt, case=False, na=False) |
+            filtered['item_name'].str.contains(search_txt, case=False, na=False) |
+            filtered['bin_location'].str.contains(search_txt, case=False, na=False)
+        ]
 
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Total Intake Shipments", f"{len(intake_records):,}")
-    with m2:
-        st.metric("Total Inbound Units Logged", f"{total_received_units:,}")
-    with m3:
-        st.metric("Receiving Dock Status", "🟢 Bays 1-4 Active")
-    with m4:
-        st.metric("Database Sync", "⚡ SQLite Live")
+    # Add health status column for display
+    if not filtered.empty:
+        filtered['Status'] = filtered.apply(
+            lambda r: '🔴 Low Stock' if r['stock_level'] <= r['reorder_point'] else '🟢 In Stock', 
+            axis=1
+        )
+        filtered['Stock_Valuation'] = filtered['stock_level'] * filtered['unit_price']
 
-    st.markdown("---")
+    # Table Display
+    disp_cols = [
+        'Status', 'item_id', 'item_name', 'category', 'stock_level', 
+        'reorder_point', 'unit_price', 'Stock_Valuation', 'zone', 
+        'bin_location', 'supplier', 'last_restocked'
+    ]
 
-    intake_tab1, intake_tab2 = st.tabs([
-        "📦 Intake Shipment for Existing SKU",
-        "✨ Register & Intake Brand New Product"
-    ])
+    st.dataframe(
+        filtered[disp_cols].rename(columns={
+            'item_id': 'SKU ID',
+            'item_name': 'Product Description',
+            'category': 'Category',
+            'stock_level': 'Stock Qty',
+            'reorder_point': 'Reorder At',
+            'unit_price': 'Unit Price ($)',
+            'Stock_Valuation': 'Total Val ($)',
+            'zone': 'Zone',
+            'bin_location': 'Bin Rack',
+            'supplier': 'Primary Supplier',
+            'last_restocked': 'Last Restocked'
+        }),
+        use_container_width=True,
+        height=380,
+        column_config={
+            "Unit Price ($)": st.column_config.NumberColumn(format="$%.2f"),
+            "Total Val ($)": st.column_config.NumberColumn(format="$%.2f"),
+            "Stock Qty": st.column_config.ProgressColumn(
+                "Stock Quantity",
+                format="%d units",
+                min_value=0,
+                max_value=int(inv_df['stock_level'].max() if not inv_df.empty else 1000)
+            )
+        }
+    )
 
-    # Tab 1: Existing SKU Intake
-    with intake_tab1:
-        st.markdown("### Record Inbound Delivery (Existing Catalog SKU)")
-        st.caption("Select an existing catalog item to record received quantities and replenish warehouse stock.")
+    # Quick Action Buttons & Modals
+    act_col1, act_col2, act_col3 = st.columns([1, 1, 1])
+    
+    with act_col1:
+        csv_download = filtered.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Export Filtered Inventory (CSV)",
+            data=csv_download,
+            file_name="warehouse_live_inventory.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
-        if inv_df.empty:
-            st.warning("No inventory items found in database.")
-        else:
-            col_sel, col_prev = st.columns([1.5, 1])
+    with act_col2:
+        with st.popover("⚡ Instant Stock Restock / Pick Action", use_container_width=True):
+            st.markdown("#### ⚡ 1-Click Fast Stock Adjuster")
+            st.caption("Quickly add or deduct units on the fly without writing a full PO.")
+            
+            sku_picker = st.selectbox("Choose SKU to adjust", inv_df['item_id'].tolist(), key="fast_sku_picker")
+            current_sku_data = get_inventory_item(sku_picker)
+            
+            st.write(f"**Item:** {current_sku_data['item_name']} | **Current Stock:** `{current_sku_data['stock_level']}` units")
+            
+            q_col1, q_col2 = st.columns(2)
+            with q_col1:
+                if st.button("➕ Quick Restock +50 Units", use_container_width=True, type="primary"):
+                    record_intake_shipment(
+                        sku_picker, 50, current_sku_data['zone'], current_sku_data['bin_location'],
+                        current_sku_data['supplier'], "PO-FAST-RESTOCK", "LOT-QUICK", "Quick Restock", "Passed Quality Check"
+                    )
+                    st.toast(f"✅ Added +50 units to {sku_picker}!")
+                    st.rerun()
+            with q_col2:
+                if st.button("➖ Quick Pick -10 Units", use_container_width=True):
+                    if current_sku_data['stock_level'] >= 10:
+                        record_dispatch_shipment(
+                            sku_picker, 10, "Fast Pick Dock", "Internal Courier", "WB-FAST", "Quick Picker", "Express"
+                        )
+                        st.toast(f"📦 Picked 10 units from {sku_picker}!")
+                        st.rerun()
+                    else:
+                        st.error("Insufficient stock!")
 
-            with col_sel:
-                sku_choices = {r['item_id']: f"{r['item_id']} - {r['item_name']} (In Stock: {r['stock_level']})" for r in inventory_list}
-                selected_item_id = st.selectbox("Select Catalog SKU", options=list(sku_choices.keys()), format_func=lambda x: sku_choices[x])
+    with act_col3:
+        with st.popover("➕ Register Brand New SKU", use_container_width=True):
+            st.markdown("#### ✨ Register New Warehouse Product")
+            with st.form("new_sku_modal_form"):
+                n_id = st.text_input("New Item ID / SKU", value=f"SKU-{random.randint(8000, 8999)}")
+                n_name = st.text_input("Product Name", placeholder="e.g. Ergonomic Industrial Barcode Scanner")
+                n_cat = st.selectbox("Category", ["Electronics", "Automotive", "Pharmaceuticals", "Industrial Tools", "Apparel & Safety", "Food & Beverages"])
+                n_qty = st.number_input("Initial Intake Units", min_value=1, max_value=5000, value=150)
+                n_price = st.number_input("Unit Cost ($)", min_value=0.5, value=45.0, step=5.0)
+                n_zone = st.selectbox("Storage Zone", ["Zone A", "Zone B", "Zone C", "Zone D"])
+                n_bin = st.text_input("Rack Location", f"BIN-{n_zone[-1]}-201")
+                n_reorder = st.number_input("Reorder Threshold", min_value=5, value=30)
+                n_supp = st.text_input("Supplier Organization", "Global Apex Supply Corp")
                 
-                selected_item = get_inventory_item(selected_item_id)
-
-                with st.form("intake_existing_form"):
-                    f1, f2 = st.columns(2)
-                    with f1:
-                        intake_qty = st.number_input("Intake Quantity (Units)", min_value=1, max_value=10000, value=100, step=10)
-                        po_num = st.text_input("Purchase Order (PO) Number", value=f"PO-{random.randint(10000, 99999)}")
-                        supp = st.text_input("Supplier / Carrier Name", value=selected_item['supplier'])
-                        batch_code = st.text_input("Batch / Lot #", value=f"BAT-2026-{datetime.now().strftime('%m%d')}")
-
-                    with f2:
-                        target_zone = st.selectbox("Assigned Storage Zone", ["Zone A", "Zone B", "Zone C", "Zone D"], index=["Zone A", "Zone B", "Zone C", "Zone D"].index(selected_item['zone']) if selected_item['zone'] in ["Zone A", "Zone B", "Zone C", "Zone D"] else 0)
-                        bin_loc = st.text_input("Rack / Bin Location", value=selected_item['bin_location'])
-                        inspector_name = st.text_input("Receiving Inspector / Officer", value="Arya Rai")
-                        qc_status = st.selectbox("Quality Inspection Status", ["Passed Quality Check", "Packaging Defect - Verified", "Quarantined for QA Testing"])
-
-                    notes = st.text_area("Intake Notes", "Shipment received in good condition and count verified against supplier manifest.")
-
-                    submit_intake = st.form_submit_button("📥 Receive & Update Database Inventory", type="primary", use_container_width=True)
-
-                    if submit_intake:
-                        success, res = record_intake_shipment(
-                            selected_item_id, intake_qty, target_zone, bin_loc,
-                            supp, po_num, batch_code, inspector_name, qc_status
+                sub_new = st.form_submit_button("✨ Save & Create SKU", type="primary", use_container_width=True)
+                if sub_new:
+                    if not n_name:
+                        st.error("Please enter a valid product name.")
+                    else:
+                        success, res = add_new_inventory_item(
+                            n_id, n_name, n_cat, n_qty, n_reorder, n_price,
+                            n_zone, n_bin, n_supp, 5, 10.0
                         )
                         if success:
-                            st.balloons()
-                            updated_item = get_inventory_item(selected_item_id)
-                            st.success(f"✅ Inbound delivery recorded! Stock for **{selected_item['item_name']}** updated: `{selected_item['stock_level']}` ➔ `{updated_item['stock_level']}` units.")
-                            st.markdown(f"""
-                            <div class="receipt-box">
-                                <div style="font-size: 1.15rem; font-weight: bold; color: #166534; margin-bottom: 6px;">
-                                    📄 OFFICIAL GOODS RECEIPT NOTE (GRN)
-                                </div>
-                                <strong>Receipt Reference:</strong> <code>{res}</code><br>
-                                <strong>Item:</strong> {selected_item['item_name']} (<code>{selected_item_id}</code>)<br>
-                                <strong>Quantity Added:</strong> {intake_qty} units<br>
-                                <strong>New Live In-Stock:</strong> {updated_item['stock_level']} units<br>
-                                <strong>Storage Location:</strong> {target_zone} ({bin_loc})<br>
-                                <strong>PO Number:</strong> {po_num} | <strong>Batch:</strong> {batch_code}<br>
-                                <strong>Verified By:</strong> {inspector_name} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br>
-                                <strong>Inspection:</strong> {qc_status}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.toast(f"🎉 New SKU {n_id} registered successfully!", icon="✅")
+                            st.rerun()
                         else:
-                            st.error(f"Error: {res}")
+                            st.error(res)
 
-            with col_prev:
-                st.markdown("##### 🔍 SKU Profile")
-                st.markdown(f"""
-                <div class="card-box">
-                    <h4 style="margin-top:0; color:#1E3A8A;">{selected_item['item_name']}</h4>
-                    <p><strong>SKU ID:</strong> <code>{selected_item['item_id']}</code></p>
-                    <p><strong>Category:</strong> {selected_item['category']}</p>
-                    <p><strong>Current Stock:</strong> <span style="font-size:1.3rem; font-weight:bold; color:{'#16A34A' if selected_item['stock_level'] > selected_item['reorder_point'] else '#DC2626'}">{selected_item['stock_level']} units</span></p>
-                    <p><strong>Reorder Threshold:</strong> {selected_item['reorder_point']} units</p>
-                    <p><strong>Storage Location:</strong> {selected_item['zone']} ({selected_item['bin_location']})</p>
-                    <p><strong>Unit Valuation:</strong> ${selected_item['unit_price']:,.2f}</p>
-                    <p><strong>Health Status:</strong> {'🟢 Safe Stock' if selected_item['stock_level'] > selected_item['reorder_point'] else '🔴 Critical Restock Required'}</p>
-                </div>
-                """, unsafe_allow_html=True)
+    # Quick Edit Expander
+    with st.expander("✏️ Edit Existing SKU Details (Price, Reorder Point, Rack Bin)"):
+        e_col1, e_col2, e_col3, e_col4, e_col5 = st.columns(5)
+        edit_target = e_col1.selectbox("Select SKU", inv_df['item_id'].tolist(), key="sku_edit_target")
+        e_data = get_inventory_item(edit_target)
+        
+        with st.form("inline_edit_form"):
+            c_f1, c_f2, c_f3, c_f4 = st.columns(4)
+            val_stock = c_f1.number_input("Adjusted Stock", value=int(e_data['stock_level']))
+            val_reorder = c_f2.number_input("Reorder Threshold", value=int(e_data['reorder_point']))
+            val_price = c_f3.number_input("Unit Price ($)", value=float(e_data['unit_price']), step=1.0)
+            val_bin = c_f4.text_input("Bin Location", value=e_data['bin_location'])
+            
+            if st.form_submit_button("💾 Commit Updates to Database", type="primary"):
+                update_inventory_stock(edit_target, val_stock, val_reorder, val_price, val_bin)
+                st.toast(f"✅ SKU {edit_target} updated successfully!")
+                st.rerun()
 
-    # Tab 2: New SKU Registration
-    with intake_tab2:
-        st.markdown("### Register & Stock Brand New SKU")
-        st.caption("Receive a new item not previously cataloged in the warehouse database.")
 
-        with st.form("new_sku_form"):
-            n1, n2, n3 = st.columns(3)
-            with n1:
-                new_id = st.text_input("New Item ID / SKU", value=f"SKU-{random.randint(7000, 7999)}")
-                new_name = st.text_input("Product Full Name", placeholder="e.g. Industrial Digital Caliper 150mm")
-                new_cat = st.selectbox("Product Category", ["Electronics", "Automotive", "Pharmaceuticals", "Industrial Tools", "Apparel & Safety", "Food & Beverages"])
+# =========================================================
+# SECTION 2: 🔄 Inbound Intake & Outbound Shipping Dock
+# =========================================================
+elif main_tab == "🔄 Inbound Intake & Outbound Shipping Dock":
+    st.markdown("### 🔄 Operations Dock: Inbound & Outbound Movement")
+    st.caption("Perform physical warehouse receiving of supplier stock or fulfill outgoing orders with immediate database updates.")
 
-            with n2:
-                new_stock = st.number_input("Initial Intake Quantity", min_value=1, max_value=5000, value=200)
-                new_price = st.number_input("Unit Price ($)", min_value=0.5, max_value=2000.0, value=35.0, step=5.0)
-                new_zone = st.selectbox("Target Storage Zone", ["Zone A", "Zone B", "Zone C", "Zone D"])
+    dock_in, dock_out = st.tabs([
+        "📥 Inbound Receiving Dock (Stock Intake)",
+        "📤 Outbound Shipping Dock (Order Dispatch)"
+    ])
 
-            with n3:
-                new_bin = st.text_input("Bin Location", value=f"BIN-{new_zone[-1]}-105")
-                new_reorder = st.number_input("Reorder Point Threshold", min_value=5, max_value=500, value=40)
-                new_lead = st.slider("Supplier Lead Time (Days)", 1, 30, 5)
+    # 1. INBOUND RECEIVING DOCK
+    with dock_in:
+        col_in_form, col_in_info = st.columns([1.6, 1])
+        
+        with col_in_form:
+            st.markdown("#### 📥 Receive Inbound Supplier Shipment")
+            
+            sku_options = {r['item_id']: f"{r['item_id']} - {r['item_name']} (In-Stock: {r['stock_level']})" for r in inventory_list}
+            target_sku = st.selectbox("Select Item to Restock", options=list(sku_options.keys()), format_func=lambda x: sku_options[x], key="inbound_sku_sel")
+            
+            item_info = get_inventory_item(target_sku)
+            
+            with st.form("dock_intake_form"):
+                row1_c1, row1_c2 = st.columns(2)
+                with row1_c1:
+                    in_quantity = st.number_input("Units Received", min_value=1, max_value=10000, value=100, step=10)
+                    in_po = st.text_input("Purchase Order (PO) #", value=f"PO-{random.randint(10000, 99999)}")
+                    in_supplier = st.text_input("Supplier Name", value=item_info['supplier'])
+                with row1_c2:
+                    in_zone = st.selectbox("Storage Zone", ["Zone A", "Zone B", "Zone C", "Zone D"], index=["Zone A", "Zone B", "Zone C", "Zone D"].index(item_info['zone']) if item_info['zone'] in ["Zone A", "Zone B", "Zone C", "Zone D"] else 0)
+                    in_bin = st.text_input("Assigned Rack Bin", value=item_info['bin_location'])
+                    in_batch = st.text_input("Batch / Lot #", value=f"LOT-2026-{datetime.now().strftime('%m%d')}")
+                
+                row2_c1, row2_c2 = st.columns(2)
+                with row2_c1:
+                    in_inspector = st.text_input("Receiving Officer", value="Arya Rai")
+                with row2_c2:
+                    in_condition = st.selectbox("Inspection Result", ["Passed Quality Check", "Packaging Defect (Approved)", "Quarantined for QA Testing"])
 
-            s1, s2 = st.columns(2)
-            with s1:
-                new_supp = st.text_input("Supplier Organization", "Global Precision Logistics Ltd")
-            with s2:
-                new_demand = st.number_input("Estimated Daily Demand (Units)", min_value=0.5, max_value=100.0, value=8.5)
+                submit_in = st.form_submit_button("📥 Receive & Update Live Inventory", type="primary", use_container_width=True)
 
-            submit_new = st.form_submit_button("✨ Register New SKU & Stock In Database", type="primary", use_container_width=True)
-
-            if submit_new:
-                if not new_id or not new_name:
-                    st.error("Please fill out both the SKU ID and Product Name.")
-                else:
-                    success, res = add_new_inventory_item(
-                        new_id, new_name, new_cat, new_stock, new_reorder,
-                        new_price, new_zone, new_bin, new_supp, new_lead, new_demand
+                if submit_in:
+                    success, grn_code = record_intake_shipment(
+                        target_sku, in_quantity, in_zone, in_bin,
+                        in_supplier, in_po, in_batch, in_inspector, in_condition
                     )
                     if success:
                         st.balloons()
-                        st.success(f"🎉 New SKU **{new_id}** ({new_name}) registered and initial intake recorded with receipt `{res}`!")
-                    else:
-                        st.error(res)
-
-# =========================================================
-# Page 2: 📤 Stock Dispatch & Fulfillment
-# =========================================================
-elif page == "📤 Stock Dispatch & Fulfillment":
-    st.markdown('<span class="wms-badge badge-outbound">Outbound Operations • Shipping Dock</span>', unsafe_allow_html=True)
-    st.markdown("<div class='main-header'>📤 Outbound Stock Dispatch & Order Fulfillment</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Pick, verify, and dispatch stock orders for client shipments, branch warehouses, and retail distribution centers.</div>", unsafe_allow_html=True)
-
-    if inv_df.empty:
-        st.warning("No inventory items found in database.")
-    else:
-        dcol1, dcol2 = st.columns([1.5, 1])
-
-        with dcol1:
-            st.markdown("### Process Outbound Shipment")
-            sku_choices = {r['item_id']: f"{r['item_id']} - {r['item_name']} (In Stock: {r['stock_level']})" for r in inventory_list}
-            dispatch_item_id = st.selectbox("Select SKU for Outbound Picking", options=list(sku_choices.keys()), format_func=lambda x: sku_choices[x])
-            
-            d_item = get_inventory_item(dispatch_item_id)
-            avail_stock = d_item['stock_level']
-
-            with st.form("dispatch_form"):
-                st.markdown(f"**Available Physical Stock:** `{avail_stock}` units | Reorder Threshold: `{d_item['reorder_point']}` units")
-
-                dp1, dp2 = st.columns(2)
-                with dp1:
-                    dispatch_qty = st.number_input("Dispatch Quantity (Units)", min_value=1, max_value=max(1, avail_stock), value=min(25, max(1, avail_stock)))
-                    destination = st.text_input("Destination Facility / Customer", "Central Fulfillment Hub North")
-                    carrier = st.selectbox("Freight Carrier", ["DHL Express", "FedEx Supply Chain", "Blue Dart Logistics", "Internal Fleet Van"])
-
-                with dp2:
-                    waybill = st.text_input("Waybill / Tracking Number", f"WB-{random.randint(100000, 999999)}")
-                    dispatcher = st.text_input("Dispatching Officer", "Arya Rai")
-                    priority = st.selectbox("Dispatch Priority", ["Standard Ground", "Expedited 24h Priority", "Critical Emergency Restock"])
-
-                submit_dispatch = st.form_submit_button("📤 Confirm & Dispatch Shipment", type="primary", use_container_width=True)
-
-                if submit_dispatch:
-                    success, res, new_stock, reorder_pt = record_dispatch_shipment(
-                        dispatch_item_id, dispatch_qty, destination, carrier, waybill, dispatcher, priority
-                    )
-                    if success:
-                        st.success(f"✅ Dispatch confirmed! **{dispatch_qty} units** of `{d_item['item_name']}` deducted. Remaining stock: `{new_stock}` units.")
-                        if new_stock <= reorder_pt:
-                            st.warning(f"⚠️ **Attention:** `{dispatch_item_id}` stock ({new_stock} units) has dropped BELOW its reorder threshold ({reorder_pt} units)! Restock alert generated.")
-
+                        new_data = get_inventory_item(target_sku)
+                        st.toast(f"✅ Inbound delivery received! Stock: {item_info['stock_level']} ➔ {new_data['stock_level']}", icon="📦")
                         st.markdown(f"""
-                        <div class="dispatch-box">
-                            <div style="font-size: 1.15rem; font-weight: bold; color: #92400E; margin-bottom: 6px;">
-                                🚚 GOODS DISPATCH NOTE (GDN)
+                        <div class="receipt-container">
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #10B981; margin-bottom: 6px;">
+                                📄 OFFICIAL GOODS RECEIPT NOTE (GRN)
                             </div>
-                            <strong>Dispatch Reference:</strong> <code>{res}</code><br>
-                            <strong>Product:</strong> {d_item['item_name']} (<code>{dispatch_item_id}</code>)<br>
-                            <strong>Quantity Shipped:</strong> {dispatch_qty} units<br>
-                            <strong>Remaining Stock:</strong> {new_stock} units<br>
-                            <strong>Destination:</strong> {destination}<br>
-                            <strong>Carrier:</strong> {carrier} | <strong>Waybill:</strong> {waybill}<br>
-                            <strong>Priority:</strong> {priority}<br>
-                            <strong>Dispatched By:</strong> {dispatcher} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                            <strong>Receipt Number:</strong> <code>{grn_code}</code><br>
+                            <strong>Product:</strong> {item_info['item_name']} (<code>{target_sku}</code>)<br>
+                            <strong>Quantity Received:</strong> +{in_quantity} units<br>
+                            <strong>Updated Total Stock:</strong> <strong>{new_data['stock_level']} units</strong><br>
+                            <strong>Assigned Location:</strong> {in_zone} • {in_bin}<br>
+                            <strong>PO Reference:</strong> {in_po} | <strong>Lot:</strong> {in_batch}<br>
+                            <strong>Inspector:</strong> {in_inspector} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                         </div>
                         """, unsafe_allow_html=True)
-                    else:
-                        st.error(res)
 
-        with dcol2:
-            st.markdown("### Picking Guidelines")
+        with col_in_info:
+            st.markdown("#### 🔍 Live SKU Card")
+            st.markdown(f"""
+            <div class="glass-card">
+                <h4 style="margin-top:0; color:#3B82F6;">{item_info['item_name']}</h4>
+                <p><strong>SKU ID:</strong> <code>{item_info['item_id']}</code></p>
+                <p><strong>Category:</strong> {item_info['category']}</p>
+                <p><strong>Current In-Stock:</strong> <span style="font-size:1.4rem; font-weight:800; color:{'#10B981' if item_info['stock_level'] > item_info['reorder_point'] else '#EF4444'}">{item_info['stock_level']} units</span></p>
+                <p><strong>Reorder Threshold:</strong> {item_info['reorder_point']} units</p>
+                <p><strong>Unit Valuation:</strong> ${item_info['unit_price']:,.2f}</p>
+                <p><strong>Location:</strong> {item_info['zone']} ({item_info['bin_location']})</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # 2. OUTBOUND SHIPPING DOCK
+    with dock_out:
+        col_out_form, col_out_info = st.columns([1.6, 1])
+
+        with col_out_form:
+            st.markdown("#### 📤 Dispatch Outbound Customer Shipment")
+            
+            sku_options_out = {r['item_id']: f"{r['item_id']} - {r['item_name']} (Available: {r['stock_level']})" for r in inventory_list}
+            dispatch_target = st.selectbox("Select Item to Dispatch", options=list(sku_options_out.keys()), format_func=lambda x: sku_options_out[x], key="outbound_sku_sel")
+            
+            d_item = get_inventory_item(dispatch_target)
+            curr_avail = d_item['stock_level']
+
+            with st.form("dock_dispatch_form"):
+                st.write(f"**Available Warehouse Stock:** `{curr_avail}` units | Reorder Threshold: `{d_item['reorder_point']}` units")
+                
+                d_c1, d_c2 = st.columns(2)
+                with d_c1:
+                    out_qty = st.number_input("Dispatch Units", min_value=1, max_value=max(1, curr_avail), value=min(20, max(1, curr_avail)))
+                    out_dest = st.text_input("Destination Hub / Client", "North City Distribution Center")
+                    out_carrier = st.selectbox("Logistics Carrier", ["DHL Express", "FedEx Freight", "Blue Dart Logistics", "Internal Fleet Van"])
+                with d_c2:
+                    out_waybill = st.text_input("Waybill / Tracking #", f"WB-{random.randint(100000, 999999)}")
+                    out_dispatcher = st.text_input("Dispatch Officer", "Arya Rai")
+                    out_priority = st.selectbox("Shipping Priority", ["Standard Ground", "Expedited 24h", "Critical Emergency"])
+
+                submit_out = st.form_submit_button("📤 Confirm & Dispatch Shipment", type="primary", use_container_width=True)
+
+                if submit_out:
+                    success, res_gdn, remaining_stock, reorder_val = record_dispatch_shipment(
+                        dispatch_target, out_qty, out_dest, out_carrier, out_waybill, out_dispatcher, out_priority
+                    )
+                    if success:
+                        st.toast(f"🚚 Shipment dispatched! Deducted {out_qty} units.", icon="📦")
+                        st.markdown(f"""
+                        <div class="dispatch-container">
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #F59E0B; margin-bottom: 6px;">
+                                🚚 OFFICIAL GOODS DISPATCH NOTE (GDN)
+                            </div>
+                            <strong>Dispatch Reference:</strong> <code>{res_gdn}</code><br>
+                            <strong>Product:</strong> {d_item['item_name']} (<code>{dispatch_target}</code>)<br>
+                            <strong>Quantity Dispatched:</strong> -{out_qty} units<br>
+                            <strong>Remaining Stock:</strong> <strong>{remaining_stock} units</strong><br>
+                            <strong>Destination:</strong> {out_dest}<br>
+                            <strong>Carrier:</strong> {out_carrier} | <strong>Waybill:</strong> {out_waybill}<br>
+                            <strong>Officer:</strong> {out_dispatcher} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        if remaining_stock <= reorder_val:
+                            st.warning(f"⚠️ **Attention:** `{dispatch_target}` has dropped below its reorder point ({reorder_val} units)! Restock alert queued.")
+                    else:
+                        st.error(res_gdn)
+
+        with col_out_info:
+            st.markdown("#### 📦 Outbound Fulfillment Rules")
             st.markdown("""
-            <div class="card-box">
-                <h4 style="margin-top:0; color:#92400E;">📦 Quality & Safety Rules</h4>
-                <ul style="font-size:0.9rem; line-height:1.6; color:#475569;">
-                    <li><strong>FIFO Principle:</strong> Pick from oldest received lot codes first.</li>
-                    <li><strong>Stock Protection:</strong> System prevents dispatching beyond physical database stock.</li>
-                    <li><strong>Inspection Scan:</strong> Scan item barcode prior to packing in dispatch bay.</li>
+            <div class="glass-card">
+                <h4 style="margin-top:0; color:#F59E0B;">🛡️ Stock Guard System</h4>
+                <ul style="font-size:0.9rem; line-height:1.6; opacity:0.9;">
+                    <li><strong>No Negative Inventory:</strong> Database constraints prevent picking above physical stock.</li>
+                    <li><strong>FIFO Protocol:</strong> Always prioritize oldest received lot batches.</li>
+                    <li><strong>Real-time Waybill:</strong> Every dispatch logs directly to the immutable SQLite audit ledger.</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
 
-# =========================================================
-# Page 3: 📋 Live Inventory & Master Catalog
-# =========================================================
-elif page == "📋 Live Inventory & Master Catalog":
-    st.markdown("<div class='main-header'>📋 Live Inventory & Master SKU Catalog</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Search, filter, edit stock levels, or adjust bin locations directly in the warehouse database.</div>", unsafe_allow_html=True)
-
-    if inv_df.empty:
-        st.info("Database is empty.")
-    else:
-        fc1, fc2, fc3, fc4 = st.columns(4)
-        with fc1:
-            sel_cat = st.multiselect("Filter Category", sorted(inv_df['category'].unique()), default=[])
-        with fc2:
-            sel_zone = st.multiselect("Filter Zone", sorted(inv_df['zone'].unique()), default=[])
-        with fc3:
-            health_filter = st.selectbox("Stock Health", ["All SKUs", "Critical Restock Only", "Safe Stock Only"])
-        with fc4:
-            search_query = st.text_input("Search SKU ID, Name or Bin", "")
-
-        filtered = inv_df.copy()
-        if sel_cat:
-            filtered = filtered[filtered['category'].isin(sel_cat)]
-        if sel_zone:
-            filtered = filtered[filtered['zone'].isin(sel_zone)]
-        if health_filter == "Critical Restock Only":
-            filtered = filtered[filtered['stock_level'] <= filtered['reorder_point']]
-        elif health_filter == "Safe Stock Only":
-            filtered = filtered[filtered['stock_level'] > filtered['reorder_point']]
-        if search_query:
-            filtered = filtered[
-                filtered['item_id'].str.contains(search_query, case=False, na=False) |
-                filtered['item_name'].str.contains(search_query, case=False, na=False) |
-                filtered['bin_location'].str.contains(search_query, case=False, na=False)
-            ]
-
-        filtered_val = (filtered['stock_level'] * filtered['unit_price']).sum()
-        st.markdown(f"Showing **{len(filtered):,}** of **{len(inv_df):,}** SKUs | Total Valuation: **${filtered_val:,.2f}**")
-
-        st.dataframe(
-            filtered[[
-                'item_id', 'item_name', 'category', 'stock_level', 'reorder_point',
-                'unit_price', 'zone', 'bin_location', 'supplier', 'last_restocked'
-            ]].rename(columns={
-                'item_id': 'SKU ID',
-                'item_name': 'Product Name',
-                'category': 'Category',
-                'stock_level': 'Current Stock',
-                'reorder_point': 'Reorder Point',
-                'unit_price': 'Unit Price ($)',
-                'zone': 'Zone',
-                'bin_location': 'Bin Location',
-                'supplier': 'Supplier',
-                'last_restocked': 'Last Restocked'
-            }),
-            use_container_width=True,
-            height=400
-        )
-
-        csv_data = filtered.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            "📥 Download Filtered Inventory Master (CSV)",
-            data=csv_data,
-            file_name="wms_inventory_catalog.csv",
-            mime="text/csv"
-        )
-
-        st.markdown("---")
-        st.markdown("### ✏️ Quick SKU Edit & Stock Adjustment")
-        with st.expander("Click to edit an existing SKU or adjust bin / reorder values"):
-            edit_sku_id = st.selectbox("Select SKU to Edit", inv_df['item_id'].tolist(), key="edit_sku_sel")
-            e_item = get_inventory_item(edit_sku_id)
-
-            with st.form("edit_sku_form"):
-                ec1, ec2, ec3, ec4 = st.columns(4)
-                with ec1:
-                    adj_stock = st.number_input("Stock Level", value=int(e_item['stock_level']))
-                with ec2:
-                    adj_reorder = st.number_input("Reorder Point", value=int(e_item['reorder_point']))
-                with ec3:
-                    adj_price = st.number_input("Unit Price ($)", value=float(e_item['unit_price']), step=1.0)
-                with ec4:
-                    adj_bin = st.text_input("Bin Location", value=e_item['bin_location'])
-
-                sub_edit = st.form_submit_button("Save Changes to Database", type="primary")
-                if sub_edit:
-                    update_inventory_stock(edit_sku_id, adj_stock, adj_reorder, adj_price, adj_bin)
-                    st.success(f"SKU {edit_sku_id} updated successfully!")
-                    st.rerun()
 
 # =========================================================
-# Page 4: ⚠️ Automated Reorder Alerts
+# SECTION 3: 📊 Warehouse Intelligence & Audit History
 # =========================================================
-elif page == "⚠️ Automated Reorder Alerts":
-    st.markdown('<span class="wms-badge badge-critical">Automated Triggers • Safety Buffer Alert</span>', unsafe_allow_html=True)
-    st.markdown("<div class='main-header'>⚠️ Automated Reorder & Stockout Alerts</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Real-time monitor of items currently below reorder thresholds, with 1-click emergency replenishment.</div>", unsafe_allow_html=True)
+elif main_tab == "📊 Warehouse Intelligence & Audit History":
+    st.markdown("### 📊 Warehouse Intelligence & Audit Logs")
+    st.caption("Visual facility zone tracking, category valuation analytics, and searchable Goods Receipt & Dispatch ledgers.")
 
-    if critical_df.empty:
-        st.success("🎉 All inventory SKUs are currently operating safely above their reorder thresholds!")
-    else:
-        st.markdown(f"### Critical SKUs Requiring Replenishment ({len(critical_df)} Items)")
-        
-        st.dataframe(
-            critical_df[['item_id', 'item_name', 'category', 'stock_level', 'reorder_point', 'unit_price', 'zone', 'bin_location', 'supplier', 'lead_time_days']].rename(columns={
-                'item_id': 'SKU ID',
-                'item_name': 'Item Name',
-                'category': 'Category',
-                'stock_level': 'Current Stock',
-                'reorder_point': 'Reorder Point',
-                'unit_price': 'Unit Price ($)',
-                'zone': 'Zone',
-                'bin_location': 'Bin',
-                'supplier': 'Supplier',
-                'lead_time_days': 'Lead Time (Days)'
-            }),
-            use_container_width=True
-        )
-
-        st.markdown("---")
-        st.markdown("#### ⚡ 1-Click Expedited Restock Intake")
-        st.write("Select any critical item to immediately trigger an emergency intake and restore warehouse safety buffer.")
-
-        rc1, rc2 = st.columns([1.5, 1])
-        with rc1:
-            crit_choices = {r['item_id']: f"{r['item_id']} - {r['item_name']} (In Stock: {r['stock_level']} | Reorder Point: {r['reorder_point']})" for _, r in critical_df.iterrows()}
-            restock_id = st.selectbox("Select Critical SKU", options=list(crit_choices.keys()), format_func=lambda x: crit_choices[x])
-            r_item = get_inventory_item(restock_id)
-            
-            # Recommended restock quantity: 2x reorder point - current stock
-            rec_qty = max(50, (r_item['reorder_point'] * 2) - r_item['stock_level'])
-
-            st.write(f"**Recommended Intake Batch:** `{rec_qty}` units | Supplier: **{r_item['supplier']}**")
-
-            if st.button(f"📥 Execute Emergency Restock ({rec_qty} Units) for {restock_id}", type="primary"):
-                success, res = record_intake_shipment(
-                    restock_id, rec_qty, r_item['zone'], r_item['bin_location'],
-                    r_item['supplier'], f"PO-EMERGENCY-{random.randint(1000, 9999)}",
-                    f"BAT-EXP-{datetime.now().strftime('%m%d')}", "Auto-WMS Expediter", "Passed Quality Check"
-                )
-                if success:
-                    st.balloons()
-                    st.success(f"🎉 Emergency Restock Completed! Receipt `{res}` generated. Risk cleared.")
-                    st.rerun()
-
-        with rc2:
-            st.markdown("""
-            <div class="card-box">
-                <h4 style="margin-top:0; color:#991B1B;">🛡️ Safety Stock Strategy</h4>
-                <p style="font-size:0.9rem; color:#64748B;">
-                    When stock level $\le$ reorder point, an immediate replenishment PO is generated to bridge the supplier lead time.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-# =========================================================
-# Page 5: 📊 Warehouse Executive Dashboard
-# =========================================================
-elif page == "📊 Warehouse Executive Dashboard":
-    st.markdown("<div class='main-header'>📊 Warehouse Executive Dashboard</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>High-level metrics on inventory valuation, category distributions, storage zone capacities, and operations velocity.</div>", unsafe_allow_html=True)
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Total Warehouse Valuation", f"${total_val:,.2f}")
-    with c2:
-        st.metric("Total Catalog SKUs", f"{total_skus:,}")
-    with c3:
-        st.metric("Total Physical Units", f"{total_units:,} units")
-    with c4:
-        st.metric("Critical Restock SKUs", f"{critical_count:,}", delta=f"-{(critical_count/max(1, total_skus)*100):.1f}% below reorder", delta_color="inverse")
-
-    st.markdown("---")
-
-    r1, r2 = st.columns(2)
-    with r1:
-        st.subheader("Inventory Valuation by Category")
-        cat_df = inv_df.groupby('category').apply(lambda x: (x['stock_level'] * x['unit_price']).sum()).reset_index(name='Total_Value')
-        fig_cat = px.bar(cat_df, x='category', y='Total_Value', color='category', text_auto='.2s', color_discrete_sequence=px.colors.qualitative.Safe)
-        fig_cat.update_layout(showlegend=False, margin=dict(l=10, r=10, t=20, b=10))
-        st.plotly_chart(fig_cat, use_container_width=True)
-
-    with r2:
-        st.subheader("Stock Units Distribution by Storage Zone")
-        zone_df = inv_df.groupby('zone')['stock_level'].sum().reset_index()
-        fig_zone = px.pie(zone_df, names='zone', values='stock_level', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
-        fig_zone.update_layout(margin=dict(l=10, r=10, t=20, b=10))
-        st.plotly_chart(fig_zone, use_container_width=True)
-
-    r3, r4 = st.columns(2)
-    with r3:
-        st.subheader("ABC Inventory Pareto Classification")
-        inv_sorted = inv_df.copy()
-        inv_sorted['item_val'] = inv_sorted['stock_level'] * inv_sorted['unit_price']
-        inv_sorted = inv_sorted.sort_values(by='item_val', ascending=False)
-        inv_sorted['cum_val'] = inv_sorted['item_val'].cumsum()
-        inv_sorted['cum_pct'] = inv_sorted['cum_val'] / max(1.0, inv_sorted['item_val'].sum())
-
-        def get_abc(p):
-            if p <= 0.80: return 'Class A (High Value 80%)'
-            elif p <= 0.95: return 'Class B (Medium Value 15%)'
-            else: return 'Class C (Low Value 5%)'
-
-        inv_sorted['Class'] = inv_sorted['cum_pct'].apply(get_abc)
-        abc_counts = inv_sorted['Class'].value_counts().reset_index()
-        abc_counts.columns = ['Class', 'Count']
-        fig_abc = px.pie(abc_counts, names='Class', values='Count', color_discrete_sequence=['#3B82F6', '#10B981', '#F59E0B'])
-        fig_abc.update_layout(margin=dict(l=10, r=10, t=20, b=10))
-        st.plotly_chart(fig_abc, use_container_width=True)
-
-    with r4:
-        st.subheader("Unit Price vs. In-Stock Level")
-        fig_scatter = px.scatter(
-            inv_df, x='unit_price', y='stock_level', color='category',
-            hover_name='item_name', size='stock_level',
-            labels={'unit_price': 'Unit Price ($)', 'stock_level': 'In-Stock Quantity'}
-        )
-        fig_scatter.update_layout(margin=dict(l=10, r=10, t=20, b=10))
-        st.plotly_chart(fig_scatter, use_container_width=True)
-
-# =========================================================
-# Page 6: 🏢 Storage Zones & Facility Layout
-# =========================================================
-elif page == "🏢 Storage Zones & Facility Layout":
-    st.markdown("<div class='main-header'>🏢 Storage Zones & Warehouse Layout Master</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Physical layout specifications, bay capacities, temperature control, and rack occupancy across facility zones.</div>", unsafe_allow_html=True)
-
-    zones_list = get_zones()
-    z_cols = st.columns(len(zones_list))
-
-    for idx, z in enumerate(zones_list):
-        with z_cols[idx]:
-            z_items = inv_df[inv_df['zone'] == z['zone_code']] if not inv_df.empty else pd.DataFrame()
-            z_units = int(z_items['stock_level'].sum()) if not z_items.empty else 0
-            z_skus = len(z_items)
-
-            st.markdown(f"""
-            <div class="card-box">
-                <h3 style="margin-top:0; color:#1E3A8A;">{z['zone_code']}</h3>
-                <p><strong>{z['zone_name']}</strong></p>
-                <hr style="margin:8px 0;">
-                <p><strong>Racking Type:</strong> {z['zone_type']}</p>
-                <p><strong>Environment:</strong> {z['temperature_control']}</p>
-                <p><strong>Total Pallet Bays:</strong> {z['total_bays']} Bays</p>
-                <p><strong>Active SKUs:</strong> <code>{z_skus}</code></p>
-                <p><strong>Stored Units:</strong> <strong>{z_units:,}</strong></p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("### SKUs by Storage Zone")
-    zone_choice = st.selectbox("Select Zone to View Stored Items", [z['zone_code'] for z in zones_list])
-    zone_items = inv_df[inv_df['zone'] == zone_choice]
-
-    if zone_items.empty:
-        st.info("No items currently mapped to this zone.")
-    else:
-        st.dataframe(
-            zone_items[['item_id', 'item_name', 'bin_location', 'category', 'stock_level', 'unit_price', 'supplier']],
-            use_container_width=True
-        )
-
-# =========================================================
-# Page 7: 📜 Transaction Audit Ledgers
-# =========================================================
-elif page == "📜 Transaction Audit Ledgers":
-    st.markdown("<div class='main-header'>📜 Transaction Audit Ledgers</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Complete, immutable history of all Goods Receipt Notes (GRNs) and Goods Dispatch Notes (GDNs) stored in SQLite.</div>", unsafe_allow_html=True)
-
-    ltab1, ltab2 = st.tabs([
-        "📥 Inbound Goods Receipt Notes (GRN) Ledger",
-        "📤 Outbound Goods Dispatch Notes (GDN) Ledger"
+    sub_intel, sub_ledgers = st.tabs([
+        "🏢 Facility Storage Zones & Layout Map",
+        "📜 Inbound (GRN) & Outbound (GDN) Audit Ledgers"
     ])
 
-    with ltab1:
-        intake_rows = get_intake_records()
-        if not intake_rows:
-            st.info("No intake records found.")
-        else:
-            in_df = pd.DataFrame(intake_rows)
-            st.markdown(f"### Inbound Intake Ledger ({len(in_df)} Records)")
-            st.dataframe(in_df, use_container_width=True)
+    with sub_intel:
+        # Zone Visual Cards with Interactive Progress Bars
+        zones = get_zones()
+        z_cols = st.columns(len(zones))
+        
+        for idx, z in enumerate(zones):
+            with z_cols[idx]:
+                z_items = inv_df[inv_df['zone'] == z['zone_code']] if not inv_df.empty else pd.DataFrame()
+                z_units = int(z_items['stock_level'].sum()) if not z_items.empty else 0
+                z_skus = len(z_items)
+                pct_occupied = min(1.0, (z_units / max(1, z['total_bays'] * 25)))
 
-            csv_in = in_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Export Inbound GRN Ledger (CSV)",
-                data=csv_in,
-                file_name="wms_inbound_grn_ledger.csv",
-                mime="text/csv"
+                st.markdown(f"""
+                <div class="glass-card">
+                    <h3 style="margin-top:0; color:#3B82F6;">{z['zone_code']}</h3>
+                    <p style="font-weight:600; font-size:0.95rem;">{z['zone_name']}</p>
+                    <hr style="margin:6px 0; opacity:0.2;">
+                    <p style="font-size:0.85rem;"><strong>Rack Type:</strong> {z['zone_type']}</p>
+                    <p style="font-size:0.85rem;"><strong>Climate:</strong> {z['temperature_control']}</p>
+                    <p style="font-size:0.85rem;"><strong>Stored Units:</strong> <strong>{z_units:,} units</strong></p>
+                    <p style="font-size:0.85rem;"><strong>Active SKUs:</strong> <code>{z_skus}</code></p>
+                </div>
+                """, unsafe_allow_html=True)
+                st.progress(pct_occupied, text=f"Bay Capacity: {int(pct_occupied*100)}%")
+
+        st.markdown("---")
+        
+        # High-Contrast Plotly Charts
+        ch1, ch2 = st.columns(2)
+        with ch1:
+            st.subheader("Inventory Valuation by Category")
+            cat_df = inv_df.groupby('category').apply(lambda x: (x['stock_level'] * x['unit_price']).sum()).reset_index(name='Total_Value')
+            fig_cat = px.bar(
+                cat_df, x='category', y='Total_Value', color='category',
+                text_auto='.2s', color_discrete_sequence=px.colors.qualitative.Prism,
+                labels={'category': 'Category', 'Total_Value': 'Total Value ($)'}
             )
+            fig_cat.update_layout(showlegend=False, margin=dict(l=10, r=10, t=25, b=10))
+            st.plotly_chart(fig_cat, use_container_width=True)
 
-    with ltab2:
-        dispatch_rows = get_dispatch_records()
-        if not dispatch_rows:
-            st.info("No dispatch records found.")
-        else:
-            out_df = pd.DataFrame(dispatch_rows)
-            st.markdown(f"### Outbound Dispatch Ledger ({len(out_df)} Records)")
-            st.dataframe(out_df, use_container_width=True)
-
-            csv_out = out_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📥 Export Outbound GDN Ledger (CSV)",
-                data=csv_out,
-                file_name="wms_outbound_gdn_ledger.csv",
-                mime="text/csv"
+        with ch2:
+            st.subheader("Units Stored by Facility Zone")
+            zone_df = inv_df.groupby('zone')['stock_level'].sum().reset_index()
+            fig_zone = px.pie(
+                zone_df, names='zone', values='stock_level', hole=0.45,
+                color_discrete_sequence=['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B']
             )
+            fig_zone.update_layout(margin=dict(l=10, r=10, t=25, b=10))
+            st.plotly_chart(fig_zone, use_container_width=True)
+
+    with sub_ledgers:
+        st.markdown("#### 📜 Immutable Transaction Ledgers (Stored in SQLite)")
+        
+        l_in_tab, l_out_tab = st.tabs([
+            "📥 Goods Receipt Notes (GRN) - Inbound History",
+            "📤 Goods Dispatch Notes (GDN) - Outbound History"
+        ])
+
+        with l_in_tab:
+            intake_records = get_intake_records()
+            if intake_records:
+                in_ledger_df = pd.DataFrame(intake_records)
+                st.dataframe(in_ledger_df, use_container_width=True, height=320)
+                csv_grn = in_ledger_df.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Download Inbound GRN Ledger (CSV)", data=csv_grn, file_name="wms_inbound_grn.csv", mime="text/csv")
+            else:
+                st.info("No intake records logged yet.")
+
+        with l_out_tab:
+            dispatch_records = get_dispatch_records()
+            if dispatch_records:
+                out_ledger_df = pd.DataFrame(dispatch_records)
+                st.dataframe(out_ledger_df, use_container_width=True, height=320)
+                csv_gdn = out_ledger_df.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Download Outbound GDN Ledger (CSV)", data=csv_gdn, file_name="wms_outbound_gdn.csv", mime="text/csv")
+            else:
+                st.info("No dispatch records logged yet.")
