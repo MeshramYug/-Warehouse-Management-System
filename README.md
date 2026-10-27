@@ -2,19 +2,22 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
-[![Scikit-Learn](https://img.shields.io/badge/ML-Scikit--Learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
+[![SQLite](https://img.shields.io/badge/Database-SQLite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Plotly](https://img.shields.io/badge/Analytics-Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](https://plotly.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-An enterprise-grade, end-to-end **Warehouse Management System (WMS)** featuring live inbound stock intake, outbound dispatch fulfillment, rack/bin coordinate tracking, automated reorder triggers, and machine learning operational analytics built with Python, Scikit-Learn, Plotly, and Streamlit.
+A production-grade, relational database-driven **Warehouse Management System (WMS)** built with **Python**, **Streamlit**, and **SQLite**. Features real-time inbound stock intake, outbound dispatch fulfillment, storage rack/bin coordinate tracking, automated reorder triggers, and transaction audit ledgers.
 
 ---
 
-## 📌 System Workflow & Management Architecture
+## 📌 System Workflow & Database Architecture
+
+The application connects to an embedded relational SQLite database (`warehouse.db`) containing seeded representation entries across multiple product categories:
 
 ```
                              ┌──────────────────────────────────────┐
-                             │    Enterprise WMS Operations Hub     │
+                             │       SQLite Database Hub            │
+                             │         (warehouse.db)               │
                              └──────────────────┬───────────────────┘
                                                 │
          ┌──────────────────────────────────────┴──────────────────────────────────────┐
@@ -23,63 +26,67 @@ An enterprise-grade, end-to-end **Warehouse Management System (WMS)** featuring 
 │ 📥 INBOUND DOCK (STOCK INTAKE)  │                                           │ 📤 OUTBOUND DOCK (DISPATCH)     │
 ├─────────────────────────────────┤                                           ├─────────────────────────────────┤
 │ • Supplier PO & Delivery Intake │                                           │ • Customer Order Picking & Pack │
-│ • Physical Quality Inspection   │                                           │ • Carrier Logistics & Waybills  │
-│ • Zone & Rack Bin Allocation    │                                           │ • Immediate Stock Level Deduct  │
-│ • Instant Live Inventory Update │                                           │ • Below-Reorder Warning System  │
+│ • Quality Inspection Checks     │                                           │ • Carrier Logistics & Waybills  │
+│ • Zone & Rack Bin Allocation    │                                           │ • Real-time Stock Deduction     │
+│ • Immediate Database Restock    │                                           │ • Safety Buffer Alert System    │
 │ • Goods Receipt Notes (GRN)     │                                           │ • Goods Dispatch Notes (GDN)    │
 └────────────────┬────────────────┘                                           └────────────────┬────────────────┘
                  │                                                                             │
                  └──────────────────────────────┬──────────────────────────────────────────────┘
                                                 ▼
                              ┌──────────────────────────────────────┐
-                             │     LIVE INVENTORY & BIN MASTER      │
+                             │       LIVE INVENTORY MASTER          │
                              ├──────────────────────────────────────┤
                              │ • Real-time Active Stock Levels      │
                              │ • Storage Zones A, B, C, and D       │
-                             │ • Days of Supply & Critical Alerts   │
-                             │ • Automated EOQ Smart Replenishment  │
+                             │ • Automated Reorder Alerts           │
+                             │ • SKU Edit & Quick Stock Adjustment  │
                              │ • Full Audit Ledgers & CSV Reports   │
                              └──────────────────────────────────────┘
 ```
 
 ---
 
-## ✨ Core Management Modules
+## ✨ Core Management Features
 
 ### 1. 📥 Inbound Stock Intake & Receiving Dock
-- **Replenish Existing SKUs**: Select an existing catalog item to record newly arrived shipments. Immediately updates warehouse stock, recalculates days of supply, clears stockout risk, and logs an official **Goods Receipt Note (GRN)**.
-- **Register & Intake Brand New SKUs**: Receive new items into the catalog with customizable category, initial stock, unit valuation, storage zone, and reorder thresholds.
-- **Receiving Quality Inspection**: Track inspector approvals, batch/lot tracking codes, and supplier PO numbers.
+- **Replenish Existing Catalog SKUs**: Record incoming delivery batches, assign rack bin coordinates (`BIN-A-101`), record supplier PO numbers, inspector approvals, and lot tracking numbers. Immediately increments database stock.
+- **Register New Product SKUs**: Onboard brand new items into the database with custom categories, initial quantities, unit valuations, and reorder points.
+- **Goods Receipt Notes (GRN)**: Automatically issues official verifiable intake receipts (`GRN-2026-XXXX`).
 
-### 2. 📤 Outbound Stock Dispatch & Fulfillment
-- **Order Picking & Dispatch**: Select items, verify physical available inventory, and process outbound fulfillment orders with destination tracking and shipping carrier waybills.
-- **Stock Guard Protection**: Prevents negative inventory picking and instantly warns operators when stock drops below safety reorder thresholds.
-- **Official Goods Dispatch Note (GDN)**: Automatically generates printable dispatch notes with audit timestamps.
+### 2. 📤 Outbound Stock Dispatch & Order Fulfillment
+- **Fulfillment Picking**: Pick items from storage bins, allocate to logistics carriers (DHL, FedEx, Blue Dart, Internal Fleet), and assign destination tracking waybills.
+- **Negative Stock Protection**: Database-level validation prevents dispatching quantities exceeding available inventory.
+- **Goods Dispatch Notes (GDN)**: Automatically issues official dispatch notes (`GDN-2026-XXXX`).
 
-### 3. 📋 Live Inventory & Bin Master
-- Searchable and filterable master table across Categories, Zones (A, B, C, D), and Stockout Status.
-- Real-time days-of-supply tracking and instantaneous CSV export for enterprise accounting.
+### 3. 📋 Live Inventory & Master Catalog
+- Real-time catalog with full CRUD operations (search, filter, quick stock adjustment, edit reorder thresholds, and CSV export).
 
-### 4. ⚠️ Automated Reorder & Stockout Alerts
-- Real-time queue of all critical inventory items operating below safety stock.
-- **⚡ 1-Click Expedited Restock**: Instantly generates an automated intake for the mathematically recommended **Economic Order Quantity (EOQ)**.
+### 4. ⚠️ Automated Reorder Alerts
+- Live monitor of all items falling below safety reorder thresholds.
+- **⚡ 1-Click Expedited Restock**: Instantly generates an emergency intake order to restore inventory safety buffers.
 
-### 5. 🎯 Warehouse KPI & Efficiency Optimizer
-- Interactive simulation powered by a Gradient Boosting Regressor ($R^2 = 0.992$) to model how picking speeds, rack layouts, and turnover rates impact facility health scores.
+### 5. 🏢 Storage Zones & Facility Layout Master
+- Visualizes storage capacity and occupancy across four dedicated facility zones:
+  - **Zone A**: Fast-Moving & High Value Bay (Ambient 20°C - 24°C)
+  - **Zone B**: Medium Turnover & Automotive Rack (Ambient 18°C - 25°C)
+  - **Zone C**: Heavy Bulk & Industrial Storage (Drive-In Racks)
+  - **Zone D**: Specialized & Cold Storage (Climate Controlled 2°C - 6°C)
 
-### 6. 📜 Inbound & Outbound Audit Ledgers
-- Searchable ledgers for both **Goods Receipt Notes (GRNs)** and **Goods Dispatch Notes (GDNs)** with exportable CSV reports for enterprise audits.
+### 6. 📊 Executive Warehouse Dashboard
+- Instant valuation across all inventory items, Pareto ABC 80/20 classification, and category breakdown.
+
+### 7. 📜 Transaction Audit Ledgers
+- Searchable, immutable history of all Goods Receipt Notes (GRNs) and Goods Dispatch Notes (GDNs) stored in SQLite.
 
 ---
 
-## 🧠 Operations Research & ML Specifications
+## 🛠️ Database Schema
 
-| Model / Formulation | Algorithm / Formula | Target Objective | Accuracy / Output |
-| :--- | :--- | :--- | :---: |
-| **Warehouse KPI Regressor** | Gradient Boosting Regressor | `KPI_score` (Facility Health) | **$R^2 = 0.992$**, MAE = 0.008 |
-| **Stockout Risk Classifier** | Random Forest Classifier | `stockout_risk` (Safe vs. Critical) | **97.66% Accuracy**, F1 = 0.977 |
-| **Economic Order Quantity (EOQ)** | $\text{EOQ} = \sqrt{\frac{2 \cdot D \cdot S}{H}}$ | Optimal Restock Batch Size | Minimizes total ordering + holding cost |
-| **Safety Stock ($SS$)** | $SS = Z \cdot \sigma_d \cdot \sqrt{L}$ | Buffer Reserve Calculation | Protects against demand variability |
+- `inventory`: `item_id`, `item_name`, `category`, `stock_level`, `reorder_point`, `unit_price`, `zone`, `bin_location`, `supplier`, `lead_time_days`, `daily_demand`, `last_restocked`
+- `intake_orders`: `grn_number`, `item_id`, `item_name`, `quantity`, `zone`, `bin_location`, `supplier`, `po_number`, `batch_no`, `inspector`, `condition`, `created_at`
+- `dispatch_orders`: `gdn_number`, `item_id`, `item_name`, `quantity`, `destination`, `carrier`, `waybill`, `dispatcher`, `priority`, `created_at`
+- `zones`: `zone_code`, `zone_name`, `zone_type`, `total_bays`, `temperature_control`
 
 ---
 
@@ -90,15 +97,12 @@ An enterprise-grade, end-to-end **Warehouse Management System (WMS)** featuring 
 pip install -r requirements.txt
 ```
 
-### 2. (Optional) Retrain Models
-```bash
-python train_model.py
-```
-
-### 3. Launch the Warehouse Management System
+### 2. Launch the Application
 ```bash
 streamlit run app.py
 ```
+*(The SQLite database `warehouse.db` is initialized and seeded with representative fake entries automatically on first launch).*
+
 Open **[http://localhost:8501](http://localhost:8501)** in your browser!
 
 ---
